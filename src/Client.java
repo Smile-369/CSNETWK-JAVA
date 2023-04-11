@@ -14,9 +14,9 @@ public class Client {
         String username = "user";
         JFrame frame = new JFrame("Chat app");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 400);
+        frame.setSize(600, 800);
 
-        JTextArea textArea = new JTextArea(20, 20);
+        JTextArea textArea = new JTextArea(40, 50);
         textArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(textArea);
         JLabel label = new JLabel("Enter text:");
@@ -41,21 +41,37 @@ public class Client {
                                 InetAddress inetAddress = InetAddress.getByName(ipAddress);
                                 client = new ServerClient(datagramSocket, inetAddress, username, textArea);
                                 client.setHasJoined(true);
-                                client.receiveMessages();
+                                textArea.append("Connection to the Message Board\n" +
+                                        "Server is successful!\n");
                             } catch (UnknownHostException ex) {
                                 ex.printStackTrace();
                             }
+                        }else {
+                            textArea.append("Not a valid server.\n");
                         }
                     }else if (command.startsWith("disconnect")) {
                         client.setHasJoined(false);
-                    } else if (command.startsWith("username")) {
+                    } else if (command.startsWith("register")) {
                         client.setUsername(words[1]);
+                        client.setRegistered(true);
+                        client.sendMessage(text);
+                    } else if (command.startsWith("msg")) {
+                        if(words.length==3){
+                            client.sendMessage(words[1], words[2]);
+                        }else {
+                            textArea.append("Not a valid message.\n");
+                        }
+                    } else if (command.startsWith("?")) {
+                        textArea.append("/join <server_ip_add> <port>\n/leave\n/register <handle>\n/all <message>\n/msg <handle> <message>");
+                    } else if (command.startsWith("all")) {
+                        text=text.substring(5);
                         client.sendMessage(text);
                     } else {
-                        System.out.println("Unknown command: " + command);
+                        text =String.format("Unknown command: " + command);
+                        client.sendMessage(text);
                     }
                 } else {
-                    client.sendMessage(text);
+                    textArea.append("No command was inputted.\n");
                 }
                 textField.setText("");
             }
@@ -73,6 +89,7 @@ class ServerClient {
     private byte[] buffer = new byte[1024];
     private InetAddress inetAddress;
     private String username;
+    private boolean isRegistered=false;
     private JTextArea textArea;
     private boolean hasJoined = false;
 
@@ -91,10 +108,19 @@ class ServerClient {
         this.username=username;
     }
 
+    public void setRegistered(boolean registered) {
+        isRegistered = true;
+    }
+
     public void sendMessage(String message) {
         if (!hasJoined) {
             System.out.println("You must join the server before sending messages.");
             textArea.append("You must join the server before sending messages.\n");
+            return;
+        }
+        if(!isRegistered){
+            System.out.println("You must Register before sending messages.");
+            textArea.append("You must Register before sending messages.\n");
             return;
         }
         Thread sendThread = new Thread(() -> {
@@ -112,7 +138,33 @@ class ServerClient {
         });
         sendThread.start();
     }
-
+    public void sendMessage(String recipient, String message) {
+        if (!hasJoined) {
+            System.out.println("You must join the server before sending messages.");
+            textArea.append("You must join the server before sending messages.\n");
+            return;
+        }
+        if(!isRegistered){
+            System.out.println("You must Register before sending messages.");
+            textArea.append("You must Register before sending messages.\n");
+            return;
+        }
+        Thread sendThread = new Thread(() -> {
+            try {
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("username", username);
+                jsonMessage.put("recipient", recipient);
+                jsonMessage.put("message", message);
+                String messageToSend = jsonMessage.toString();
+                buffer = messageToSend.getBytes();
+                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, 4000);
+                datagramSocket.send(datagramPacket);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        sendThread.start();
+    }
     public void receiveMessages() {
         Thread receiveThread = new Thread(() -> {
             while (true) {
