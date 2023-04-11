@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Server {
     private DatagramSocket datagramSocket;
-    private byte[] buffer = new byte[256];
+    private byte[] buffer = new byte[1024];
     private List<SocketAddress> clients = new ArrayList<>();
 
     public Server(DatagramSocket datagramSocket) {
