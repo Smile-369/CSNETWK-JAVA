@@ -3,15 +3,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.*;
-
+import org.json.*;
 public class Client {
     private static ServerClient client;
 
-    public static void main(String[] args) throws SocketException, UnknownHostException {
+    public static void main(String[] args) throws IOException {
+        byte[] buffer= new byte[10];
         DatagramSocket datagramSocket = new DatagramSocket();
         InetAddress inetAddress = InetAddress.getByName("localhost");
         String username = "user";
-
         JFrame frame = new JFrame("Chat app");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 400);
@@ -31,21 +31,30 @@ public class Client {
             public void actionPerformed(ActionEvent e) {
                 String text = textField.getText();
                 String command = text.substring(1);
-                // Here you can save the text to a file or database, for example
                 if (text.startsWith("/")) {
                     String[] words = command.split(" ");
                     if (command.startsWith("join")) {
-
                         if (words.length == 3) {
+                            String ipAddress = words[1];
+                            int port = Integer.parseInt(words[2]);
+                            try {
+                                InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                                client = new ServerClient(datagramSocket, inetAddress, username, textArea);
+                                client.setHasJoined(true);
+                                client.receiveMessages();
+                            } catch (UnknownHostException ex) {
+                                ex.printStackTrace();
+                            }
                         }
-
+                    }else if (command.startsWith("disconnect")) {
+                        client.setHasJoined(false);
                     } else if (command.startsWith("username")) {
                         client.setUsername(words[1]);
+                        client.sendMessage(text);
                     } else {
                         System.out.println("Unknown command: " + command);
                     }
-                }else {
-                    System.out.println("You entered: " + text);
+                } else {
                     client.sendMessage(text);
                 }
                 textField.setText("");
@@ -65,6 +74,7 @@ class ServerClient {
     private InetAddress inetAddress;
     private String username;
     private JTextArea textArea;
+    private boolean hasJoined = false;
 
     public ServerClient(DatagramSocket datagramSocket, InetAddress inetAddress, String username, JTextArea textArea) {
         this.datagramSocket = datagramSocket;
@@ -72,13 +82,27 @@ class ServerClient {
         this.username = username;
         this.textArea = textArea;
     }
+
+    public void setHasJoined(boolean hasJoined) {
+        this.hasJoined = hasJoined;
+    }
+
     public void setUsername(String username){
         this.username=username;
     }
+
     public void sendMessage(String message) {
+        if (!hasJoined) {
+            System.out.println("You must join the server before sending messages.");
+            textArea.append("You must join the server before sending messages.\n");
+            return;
+        }
         Thread sendThread = new Thread(() -> {
             try {
-                String messageToSend = username + ": " + message;
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("username", username);
+                jsonMessage.put("message", message);
+                String messageToSend = jsonMessage.toString();
                 buffer = messageToSend.getBytes();
                 DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, 4000);
                 datagramSocket.send(datagramPacket);
@@ -95,9 +119,12 @@ class ServerClient {
                 try {
                     DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length);
                     datagramSocket.receive(datagramPacket);
-                    String messageFromServer = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-                    System.out.println(messageFromServer);
-                    textArea.append(messageFromServer + "\n");
+                    String jsonMessage = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
+                    JSONObject messageFromServer = new JSONObject(jsonMessage);
+                    String username = messageFromServer.getString("username");
+                    String message = messageFromServer.getString("message");
+                    System.out.println(username + ": " + message);
+                    textArea.append(username + ": " + message + "\n");
                 } catch (IOException e) {
                     e.printStackTrace();
                     break;
@@ -105,5 +132,6 @@ class ServerClient {
             }
         });
         receiveThread.start();
+
     }
 }
