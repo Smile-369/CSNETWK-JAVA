@@ -78,8 +78,9 @@ public class Client {
                     } else if (command.startsWith("msg")) {
                         if(client.isHasJoined()&&client.isRegistered()) {
                             if (words.length >= 3) {
-                                String substring = text.substring(4);
-                                client.sendMessage(words[1], substring);
+                                String substring = text.substring(6);
+                                client.sendMessage(words[1], text);
+                                textArea.append("[to "+words[1]+"] "+ substring+"\n");
                             } else {
                                 textArea.append("Not a valid message.\n");
                             }
@@ -92,8 +93,7 @@ public class Client {
                             client.sendMessage(text);
                         }
                     } else {
-                        text =String.format("Unknown command: " + command);
-                        client.sendMessage(text);
+                        textArea.append("Unknown command: " + command);
                     }
                 } else {
                     textArea.append("No command was inputted.\n");
