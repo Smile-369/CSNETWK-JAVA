@@ -88,7 +88,7 @@ public class Client {
                     } else if (command.startsWith("msg")) {
                         if(client.isHasJoined()&&client.isRegistered()) {
                             if (words.length >= 3) {
-                                String substring = text.substring(6);
+                                String substring = text.substring((words[0].length()+words[1].length()+2));
                                 client.sendMessage(words[1], text);
                                 textArea.append("[to "+words[1]+"] "+ substring+"\n");
                             } else {

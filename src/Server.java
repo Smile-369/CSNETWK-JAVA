@@ -39,7 +39,7 @@ public class Server {
                 if(message.startsWith("/msg")){
                    recipient = messageFromClient.optString("recipient", null);
                    String[] split=message.split(" ");
-                   message = message.substring((4+split[1].length()));
+                   message = message.substring((4+split[1].length()+2));
                 }else {
                     recipient=null;
                 }
