@@ -103,8 +103,12 @@ public class Client {
                         }
                     } else if (command.startsWith("all")) {
                         if(client.isHasJoined()&&client.isRegistered()) {
-                            text = text.substring(5);
-                            client.sendMessage(text);
+                            if(words.length>=2){
+                                text = text.substring(5);
+                                client.sendMessage(text);
+                            }else{
+                                textArea.append("Error: Command not found.\n");
+                            }
                         }
                     } else {
                         textArea.append("Unknown command: " + command+"\n");
