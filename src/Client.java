@@ -221,7 +221,7 @@ class ServerClient {
                     if(username==this.username){
                         textArea.append(message + "\n");
                     }else {
-                        textArea.append(username + ": " + message + "\n");
+                        textArea.append("["+username + "]: " + message + "\n");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
