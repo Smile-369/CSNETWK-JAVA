@@ -15,7 +15,6 @@ public class Client {
         JFrame frame = new JFrame("Chat app");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(600, 800);
-
         JTextArea textArea = new JTextArea(40, 50);
         textArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(textArea);
@@ -40,32 +39,43 @@ public class Client {
                             try {
                                 InetAddress inetAddress = InetAddress.getByName(ipAddress);
                                 client = new ServerClient(datagramSocket, inetAddress, username, textArea);
+                                client.setPort(port);
                                 client.setHasJoined(true);
-                                textArea.append("Connection to the Message Board\n" +
+                                text=("Connection to the Message Board\n" +
                                         "Server is successful!\n");
+                                client.sendMessage(text);
                             } catch (UnknownHostException ex) {
                                 ex.printStackTrace();
                             }
                         }else {
                             textArea.append("Not a valid server.\n");
                         }
-                    }else if (command.startsWith("disconnect")) {
-                        client.setHasJoined(false);
+                    }else if (command.startsWith("leave")) {
+                        if(client.isHasJoined()&&client.isRegistered()){
+                            client.setHasJoined(false);
+                        }
                     } else if (command.startsWith("register")) {
-                        client.setUsername(words[1]);
-                        client.setRegistered(true);
-                        client.sendMessage(text);
+                        if (client.isHasJoined()){
+                            client.setUsername(words[1]);
+                            client.setRegistered(true);
+                            client.sendMessage(text);
+                        }
                     } else if (command.startsWith("msg")) {
-                        if(words.length==3){
-                            client.sendMessage(words[1], words[2]);
-                        }else {
-                            textArea.append("Not a valid message.\n");
+                        if(client.isHasJoined()&&client.isRegistered()) {
+                            if (words.length >= 3) {
+                                String substring = text.substring(4);
+                                client.sendMessage(words[1], substring);
+                            } else {
+                                textArea.append("Not a valid message.\n");
+                            }
                         }
                     } else if (command.startsWith("?")) {
                         textArea.append("/join <server_ip_add> <port>\n/leave\n/register <handle>\n/all <message>\n/msg <handle> <message>");
                     } else if (command.startsWith("all")) {
-                        text=text.substring(5);
-                        client.sendMessage(text);
+                        if(client.isHasJoined()&&client.isRegistered()) {
+                            text = text.substring(5);
+                            client.sendMessage(text);
+                        }
                     } else {
                         text =String.format("Unknown command: " + command);
                         client.sendMessage(text);
@@ -88,6 +98,7 @@ class ServerClient {
     private DatagramSocket datagramSocket;
     private byte[] buffer = new byte[1024];
     private InetAddress inetAddress;
+    private int port;
     private String username;
     private boolean isRegistered=false;
     private JTextArea textArea;
@@ -108,29 +119,22 @@ class ServerClient {
         this.username=username;
     }
 
+    public void setPort(int port){this.port=port;}
     public void setRegistered(boolean registered) {
         isRegistered = true;
     }
 
     public void sendMessage(String message) {
-        if (!hasJoined) {
-            System.out.println("You must join the server before sending messages.");
-            textArea.append("You must join the server before sending messages.\n");
-            return;
-        }
-        if(!isRegistered){
-            System.out.println("You must Register before sending messages.");
-            textArea.append("You must Register before sending messages.\n");
-            return;
-        }
+
         Thread sendThread = new Thread(() -> {
             try {
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("username", username);
                 jsonMessage.put("message", message);
+                jsonMessage.put("recipient", "all");
                 String messageToSend = jsonMessage.toString();
                 buffer = messageToSend.getBytes();
-                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, 4000);
+                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, port);
                 datagramSocket.send(datagramPacket);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -138,17 +142,22 @@ class ServerClient {
         });
         sendThread.start();
     }
-    public void sendMessage(String recipient, String message) {
+    boolean isHasJoined(){
         if (!hasJoined) {
             System.out.println("You must join the server before sending messages.");
             textArea.append("You must join the server before sending messages.\n");
-            return;
-        }
+            return false;
+        }else return true;
+
+    }
+    boolean isRegistered(){
         if(!isRegistered){
             System.out.println("You must Register before sending messages.");
             textArea.append("You must Register before sending messages.\n");
-            return;
-        }
+            return false;
+        } else return true;
+    }
+    public void sendMessage(String recipient, String message) {
         Thread sendThread = new Thread(() -> {
             try {
                 JSONObject jsonMessage = new JSONObject();
@@ -157,7 +166,7 @@ class ServerClient {
                 jsonMessage.put("message", message);
                 String messageToSend = jsonMessage.toString();
                 buffer = messageToSend.getBytes();
-                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, 4000);
+                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, port);
                 datagramSocket.send(datagramPacket);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -175,8 +184,11 @@ class ServerClient {
                     JSONObject messageFromServer = new JSONObject(jsonMessage);
                     String username = messageFromServer.getString("username");
                     String message = messageFromServer.getString("message");
-                    System.out.println(username + ": " + message);
-                    textArea.append(username + ": " + message + "\n");
+                    if(username==this.username){
+                        textArea.append(message + "\n");
+                    }else {
+                        textArea.append(username + ": " + message + "\n");
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                     break;

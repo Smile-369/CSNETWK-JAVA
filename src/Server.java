@@ -23,13 +23,10 @@ public class Server {
                 String message = messageFromClient.getString("message");
                 if (!clients.containsKey(clientAddress)) {
                     clients.put(clientAddress, username);
-                    message = "User " + username + " has joined";
-                    recipient = null;
-                } else if (message.startsWith("/username")) {
-                    String oldName = clients.get(clientAddress);
-                    String newName = message.substring(9);
-                    clients.put(clientAddress, newName);
-                    message = "User " + oldName + " changed name to " + newName;
+                    recipient = username;
+                } else if (message.startsWith("/register")) {
+                    clients.put(clientAddress, username);
+                    message = "Welcome "+ username;
                     recipient = null;
                 }
 
@@ -38,15 +35,24 @@ public class Server {
                 jsonMessageToSend.put("message", message);
                 String messageToSend = jsonMessageToSend.toString();
 
-                if (recipient == null) {
+                if (recipient == null||recipient.equals("all")) {
                     for (SocketAddress client : clients.keySet()) {
+                        System.out.println(client);
                         byte[] messageBytes = messageToSend.getBytes();
                         DatagramPacket sendPacket = new DatagramPacket(messageBytes, messageBytes.length, client);
                         datagramSocket.send(sendPacket);
                     }
                 } else {
                     for (Map.Entry<SocketAddress, String> entry : clients.entrySet()) {
+                        System.out.println(entry.getKey()+ entry.getValue());
                         if (entry.getValue().equals(recipient)) {
+                            byte[] messageBytes = messageToSend.getBytes();
+
+                            DatagramPacket sendPacket = new DatagramPacket(messageBytes, messageBytes.length, entry.getKey());
+                            datagramSocket.send(sendPacket);
+                            break;
+                        }else  {
+                            messageToSend="Error: Handle or alias not found.";
                             byte[] messageBytes = messageToSend.getBytes();
                             DatagramPacket sendPacket = new DatagramPacket(messageBytes, messageBytes.length, entry.getKey());
                             datagramSocket.send(sendPacket);
@@ -64,7 +70,9 @@ public class Server {
 
 
     public static void main(String[] args) throws SocketException {
-        DatagramSocket datagramSocket = new DatagramSocket(4000);
+        DatagramSocket datagramSocket = new DatagramSocket(null);
+        InetSocketAddress address = new InetSocketAddress("localhost", 1234);
+        datagramSocket.bind(address);
         Server server = new Server(datagramSocket);
         server.receiveThenSend();
     }
