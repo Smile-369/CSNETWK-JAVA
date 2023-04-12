@@ -38,21 +38,36 @@ public class Client {
                             int port = Integer.parseInt(words[2]);
                             try {
                                 InetAddress inetAddress = InetAddress.getByName(ipAddress);
-                                client = new ServerClient(datagramSocket, inetAddress, username, textArea);
-                                client.setPort(port);
-                                client.setHasJoined(true);
-                                text=("Connection to the Message Board\n" +
-                                        "Server is successful!\n");
-                                client.sendMessage(text);
+
+                                if(inetAddress.isReachable(port)){
+                                    client = new ServerClient(datagramSocket, inetAddress, username, textArea);
+                                    client.setHasJoined(true);
+                                    client.setPort(port);
+                                    text=("Connection to the Message Board\n" +
+                                            "Server is successful!\n");
+                                    client.sendMessage(text);
+                                }else {
+                                    textArea.append("Error: Connection to the Message\n" +
+                                            "Board Server has failed! Please\n" +
+                                            "check IP Address and Port Number.\n");
+                                }
+
+
                             } catch (UnknownHostException ex) {
                                 ex.printStackTrace();
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
                             }
                         }else {
                             textArea.append("Not a valid server.\n");
                         }
                     }else if (command.startsWith("leave")) {
-                        if(client.isHasJoined()&&client.isRegistered()){
-                            client.setHasJoined(false);
+                        if(client.isHasJoined()){
+                            client = new ServerClient(datagramSocket, inetAddress, username, textArea);
+                            textArea.append("Connection closed. Thank you!\n");
+                        }else {
+                            textArea.append("Error: Disconnection failed. Please\n" +
+                                    "connect to the server first.\n");
                         }
                     } else if (command.startsWith("register")) {
                         if (client.isHasJoined()){
@@ -111,6 +126,10 @@ class ServerClient {
         this.textArea = textArea;
     }
 
+    public ServerClient() {
+
+    }
+
     public void setHasJoined(boolean hasJoined) {
         this.hasJoined = hasJoined;
     }
@@ -131,7 +150,6 @@ class ServerClient {
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("username", username);
                 jsonMessage.put("message", message);
-                jsonMessage.put("recipient", "all");
                 String messageToSend = jsonMessage.toString();
                 buffer = messageToSend.getBytes();
                 DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, port);
@@ -198,4 +216,5 @@ class ServerClient {
         receiveThread.start();
 
     }
+
 }

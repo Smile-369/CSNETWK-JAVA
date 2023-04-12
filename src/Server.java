@@ -13,6 +13,7 @@ public class Server {
     public void receiveThenSend() {
         while (true) {
             try {
+
                 DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length);
                 datagramSocket.receive(datagramPacket);
                 SocketAddress clientAddress = datagramPacket.getSocketAddress();
@@ -25,9 +26,15 @@ public class Server {
                     clients.put(clientAddress, username);
                     recipient = username;
                 } else if (message.startsWith("/register")) {
-                    clients.put(clientAddress, username);
-                    message = "Welcome "+ username;
-                    recipient = null;
+                    if(!clients.containsValue(username)){
+                        clients.put(clientAddress, username);
+                        message = "Welcome " + username;
+                        recipient = null;
+                    }else {
+                        message="Error: Registration failed. Handle\n" +
+                                "or alias already exists.";
+                        recipient = null;
+                    }
                 }
 
                 JSONObject jsonMessageToSend = new JSONObject();
@@ -35,9 +42,8 @@ public class Server {
                 jsonMessageToSend.put("message", message);
                 String messageToSend = jsonMessageToSend.toString();
 
-                if (recipient == null||recipient.equals("all")) {
+                if (recipient == null) {
                     for (SocketAddress client : clients.keySet()) {
-                        System.out.println(client);
                         byte[] messageBytes = messageToSend.getBytes();
                         DatagramPacket sendPacket = new DatagramPacket(messageBytes, messageBytes.length, client);
                         datagramSocket.send(sendPacket);
@@ -47,7 +53,6 @@ public class Server {
                         System.out.println(entry.getKey()+ entry.getValue());
                         if (entry.getValue().equals(recipient)) {
                             byte[] messageBytes = messageToSend.getBytes();
-
                             DatagramPacket sendPacket = new DatagramPacket(messageBytes, messageBytes.length, entry.getKey());
                             datagramSocket.send(sendPacket);
                             break;
