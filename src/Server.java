@@ -37,7 +37,6 @@ public class Server {
                     }
                 }
                 if(message.startsWith("/msg")){
-                    System.out.println(recipient);
                    recipient = messageFromClient.optString("recipient", null);
                    message = message.substring(6);
                 }else {
@@ -57,7 +56,6 @@ public class Server {
                     }
                 } else {
                     for (HashMap.Entry<SocketAddress, String> entry : clients.entrySet()) {
-                            System.out.println(entry.getKey() + " "+ entry.getValue()+" "+ recipient+ " "+ messageToSend);
                             if(entry.getValue().equals(recipient)){
                                 byte[] messageBytes = messageToSend.getBytes();
                                 DatagramPacket sendPacket = new DatagramPacket(messageBytes, messageBytes.length, entry.getKey());

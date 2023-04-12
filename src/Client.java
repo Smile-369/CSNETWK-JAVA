@@ -51,8 +51,6 @@ public class Client {
                                             "Board Server has failed! Please\n" +
                                             "check IP Address and Port Number.\n");
                                 }
-
-
                             } catch (UnknownHostException ex) {
                                 ex.printStackTrace();
                             } catch (IOException ex) {
@@ -62,19 +60,31 @@ public class Client {
                             textArea.append("Not a valid server.\n");
                         }
                     }else if (command.startsWith("leave")) {
-                        if(client.isHasJoined()){
-                            client = new ServerClient(datagramSocket, inetAddress, username, textArea);
-                            textArea.append("Connection closed. Thank you!\n");
-                        }else {
-                            textArea.append("Error: Disconnection failed. Please\n" +
-                                    "connect to the server first.\n");
-                        }
+                            if (client.isHasJoined()) {
+                                if(words.length==1){
+                                    client = new ServerClient(datagramSocket, inetAddress, username, textArea);
+                                    textArea.append("Connection closed. Thank you!\n");
+                                }else{
+                                    textArea.append("Error: Command not found.\n");
+                                }
+                            } else {
+                                textArea.append("Error: Disconnection failed. Please\n" +
+                                        "connect to the server first.\n");
+                            }
+
                     } else if (command.startsWith("register")) {
-                        if (client.isHasJoined()){
-                            client.setUsername(words[1]);
-                            client.setRegistered(true);
-                            client.sendMessage(text);
-                        }
+                            if (client.isHasJoined()&&!client.isRegistered) {
+                                if (words.length==2) {
+                                    client.setUsername(words[1]);
+                                    client.setRegistered(true);
+                                    client.sendMessage(text);
+                                }
+                                else{
+                                    textArea.append("Error: Command not found.\n");
+                                }
+                            }else{
+                                textArea.append("Error: Client is registered\n");
+                            }
                     } else if (command.startsWith("msg")) {
                         if(client.isHasJoined()&&client.isRegistered()) {
                             if (words.length >= 3) {
@@ -86,14 +96,18 @@ public class Client {
                             }
                         }
                     } else if (command.startsWith("?")) {
-                        textArea.append("/join <server_ip_add> <port>\n/leave\n/register <handle>\n/all <message>\n/msg <handle> <message>");
+                        if(words.length==1){
+                            textArea.append("/join <server_ip_add> <port>\n/leave\n/register <handle>\n/all <message>\n/msg <handle> <message>");
+                        }else{
+                            textArea.append("Error: Command not found.\n");
+                        }
                     } else if (command.startsWith("all")) {
                         if(client.isHasJoined()&&client.isRegistered()) {
                             text = text.substring(5);
                             client.sendMessage(text);
                         }
                     } else {
-                        textArea.append("Unknown command: " + command);
+                        textArea.append("Unknown command: " + command+"\n");
                     }
                 } else {
                     textArea.append("No command was inputted.\n");
@@ -115,7 +129,7 @@ class ServerClient {
     private InetAddress inetAddress;
     private int port;
     private String username;
-    private boolean isRegistered=false;
+    public boolean isRegistered=false;
     private JTextArea textArea;
     private boolean hasJoined = false;
 
@@ -162,7 +176,6 @@ class ServerClient {
     }
     boolean isHasJoined(){
         if (!hasJoined) {
-            System.out.println("You must join the server before sending messages.");
             textArea.append("You must join the server before sending messages.\n");
             return false;
         }else return true;
@@ -170,7 +183,6 @@ class ServerClient {
     }
     boolean isRegistered(){
         if(!isRegistered){
-            System.out.println("You must Register before sending messages.");
             textArea.append("You must Register before sending messages.\n");
             return false;
         } else return true;
